@@ -57,12 +57,12 @@ module.exports = {
         }
 
         //Modal submit listner (for complaints.js)
-        /*if (interaction.isModalSubmit()) {
-            const command = client.commands.get('form');
+        if (interaction.isModalSubmit()) {
+            const command = client.commands.get('complaints');
             if (command && command.modalHandler) {
                 await command.modalHandler(interaction);
             }
-        }*/
+        }
         
         //user context menu listener
         if (interaction.isUserContextMenuCommand()) {
