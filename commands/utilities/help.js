@@ -12,7 +12,7 @@ module.exports = {
             .setTitle(' S.H.I.E.L.D-Bot Help Menu')
             .setDescription(
                 '**Welcome to the Help command of S.H.I.E.L.D-Bot<3**\n' +
-                'Here you can find all available commands and their purposes.'
+                'Here you can find all available commands and verifies their purposes.'
             )
             .addFields(
                 {
@@ -25,7 +25,7 @@ module.exports = {
                 },
                 {
                     name: ' /databasetest',
-                    value: 'Tests the database connection and verifies system integrity.',
+                    value: 'Tests the database connection and  system integrity.',
                 }
             )
             .setFooter({
