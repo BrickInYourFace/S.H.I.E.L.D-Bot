@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, LabelBuilder, TextDisplayBuilder, MessageFlags} = require('discord.js');
-
+const ComplaintsDataBase = require('../../database/keyv');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('complaints')
@@ -49,7 +49,11 @@ module.exports = {
         if (interaction.customId === "complaints") {
             const complaintOutput = interaction.fields.getTextInputValue("complaintsInput");
             const suggestionOutput = interaction.fields.getTextInputValue("suggestionsInput");
-
+            const entry={complaint:`${complaintOutput}`,suggestion:`${suggestionOutput}`}
+            const userIdKey = interaction.user.id;
+            const count = (await ComplaintsDataBase.uses.get(userIdKey)) ?? 0;
+            const key=`${userIdKey}-${count+1}`
+            await ComplaintsDataBase.uses.set(key,entry)
             await interaction.reply({
                 content: `Your submission was received, ${interaction.user}!`,
                 flag: MessageFlags.Ephemeral
