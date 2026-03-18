@@ -53,7 +53,7 @@ module.exports = {
             const userIdKey = interaction.user.id;
             const count = (await ComplaintsDataBase.uses.get(userIdKey)) ?? 0;
             const key=`${userIdKey}-${count+1}`
-            await ComplaintsDataBase.uses.set(key,entry)
+            await ComplaintsDataBase.complaints.set(key,entry)
             await interaction.reply({
                 content: `Your submission was received, ${interaction.user}!`,
                 flag: MessageFlags.Ephemeral

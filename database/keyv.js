@@ -20,6 +20,7 @@ keyv.on('error', err => {
 
 module.exports = {
   uses: createStore('uses'), //test uses table for databasetest.js
+  complaints: createStore("complaints"),
   //threats: createStore('threats')
 };
 
