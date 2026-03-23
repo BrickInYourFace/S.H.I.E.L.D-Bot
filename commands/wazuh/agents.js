@@ -20,14 +20,14 @@ module.exports = {
                 description += `${emoji} **${agent.name}** — ${agent.status}\n`;
             });
             const file = new AttachmentBuilder(
-                path.join(__dirname, '../../S.H.I.E.L.D-Bot deep in thought.png')
+                path.join(__dirname, '../../S.H.I.E.L.D-Bot-deep-in-thought.png')
             );
 
             const embed = new EmbedBuilder()
                 .setTitle('Wazuh Agents')
                 .setDescription(description)
                 .setColor(0x800080) 
-                .setThumbnail('attachment://wazuh.png')
+                .setThumbnail('attachment://S.H.I.E.L.D-Bot-deep-in-thought.png')
                 .setTimestamp();
 
             await interaction.editReply({
