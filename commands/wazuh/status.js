@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getManagerStatus } = require('../../utilities/wazuh');
 
 module.exports = {
@@ -6,6 +6,12 @@ module.exports = {
         .setName('status')
         .setDescription('Show Wazuh manager service status'),
     async execute(interaction) {
+        const statusEmbed = new EmbedBuilder()
+            .setAuthor({ name: 'Developed By The S.H.I.E.L.D Team' })
+            .setTitle('Status')
+            .setDescription('Show Wazuh manager service status')
+            .setColor('#6B52ED')
+
         await interaction.deferReply();
         try {
             const statuses = await getManagerStatus();
@@ -18,5 +24,6 @@ module.exports = {
         } catch (err) {
             await interaction.editReply('❌ Error fetching status: ' + err.message);
         }
+        embeds: [statusEmbed]
     }
 };
