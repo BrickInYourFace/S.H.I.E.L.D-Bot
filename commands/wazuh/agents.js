@@ -20,7 +20,7 @@ module.exports = {
                 description += `${emoji} **${agent.name}** — ${agent.status}\n`;
             });
             const file = new AttachmentBuilder(
-                path.join(__dirname, '../../wazuh.png')
+                path.join(__dirname, '../../S.H.I.E.L.D-Bot deep in thought.png')
             );
 
             const embed = new EmbedBuilder()
