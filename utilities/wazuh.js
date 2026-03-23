@@ -1,9 +1,9 @@
 const axios = require('axios');
 const https = require('https');
 
-const TAILSCALE_IP = '100.127.115.15';
-const WAZUH_USER = 'wazuh-wui';
-const WAZUH_PASS = 'wazuh-wui';
+const TAILSCALE_IP = '100.127.115.15'; //server ip
+const WAZUH_USER = 'wazuh-wui'; //wazuh api username
+const WAZUH_PASS = 'wazuh-wui'; // wazuh api password
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -29,18 +29,6 @@ async function getAgents() {
         }
     );
     return response.data.data.affected_items;
-}
-
-async function getOverview() {
-    const token = await getWazuhToken();
-    const response = await axios.get(
-        `https://${TAILSCALE_IP}:55000/overview/agents`,
-        {
-            headers: { Authorization: `Bearer ${token}` },
-            httpsAgent
-        }
-    );
-    return response.data.data;
 }
 
 async function getManagerStatus() {
@@ -78,4 +66,4 @@ async function getAlerts(limit = 5, level = 1) {
     return response.data.hits.hits.map(hit => hit._source);
 }
 
-module.exports = { getAgents, getOverview, getManagerStatus, getAlerts };
+module.exports = { getAgents, getManagerStatus, getAlerts };
