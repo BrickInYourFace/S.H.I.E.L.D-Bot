@@ -2,6 +2,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
 const { token } = require('./config.json');
+const { startAlertPoller } = require('./utilities/alertPoller');
+const { alertChannelId } = require('./config.json');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
