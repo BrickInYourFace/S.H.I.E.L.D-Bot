@@ -6,21 +6,23 @@ module.exports = {
         .setName('status')
         .setDescription('Show Wazuh manager service status'),
     async execute(interaction) {
-        const statusEmbed = new EmbedBuilder()
-            .setAuthor({ name: 'Developed By The S.H.I.E.L.D Team' })
-            .setTitle('Status')
-            .setDescription('Show Wazuh manager service status')
-            .setColor('#6B52ED')
 
         await interaction.deferReply();
         try {
             const statuses = await getManagerStatus();
-            let msg = '**Wazuh Manager Status:**\n';
+            let msg = '';
             for (const [service, status] of Object.entries(statuses)) {
                 const emoji = status === 'running' ? '✅' : '❌';
                 msg += `${emoji} ${service}: ${status}\n`;
             }
-            await interaction.editReply({ msg, embeds: [statusEmbed] });
+            const statusEmbed = new EmbedBuilder()
+                .setAuthor({ name: 'Developed By The S.H.I.E.L.D Team' })
+                .setTitle('Status of background processes running on the wazuh server:')
+                .setDescription(msg)
+                .setColor('#6B52ED')
+                .setTimestamp()
+
+            await interaction.editReply({ embeds: [statusEmbed] });
         } catch (err) {
             await interaction.editReply('❌ Error fetching status: ' + err.message);
         }
