@@ -20,10 +20,9 @@ module.exports = {
                 const emoji = status === 'running' ? '✅' : '❌';
                 msg += `${emoji} ${service}: ${status}\n`;
             }
-            await interaction.editReply(msg);
+            await interaction.editReply({msg, embeds: [statusEmbed]});
         } catch (err) {
             await interaction.editReply('❌ Error fetching status: ' + err.message);
         }
-        embeds: [statusEmbed]
     }
 };
