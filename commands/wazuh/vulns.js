@@ -32,13 +32,16 @@ module.exports = {
                 return await interaction.editReply(`✅ No vulnerabilities found for \`${agentName}\``);
             }
 
-            let msg = `**Vulnerabilities on \`${agentName}\`${severity ? ` (${severity})` : ''}:**\n`;
+            let msg = `**Vulnerabilities on \`${agentName}\`${severity ? ` (${severity})` : ''}:**\n`; //the chosen severity will be >=
             vulns.slice(0, 10).forEach((v, i) => {
-                msg += `\n**${i + 1}.** \`${v.name}\` — ${v.version ?? 'N/A'}\n`;
-                msg += `   ⚠️ Severity: ${v.severity ?? 'N/A'} | CVE: ${v.cve ?? 'N/A'}\n`;
+                const sev = v.vulnerability?.severity ?? 'N/A';
+                const sevEmoji = sev === 'Critical' ? '🔴' : sev === 'High' ? '🟠' : sev === 'Medium' ? '🟡' : '🟢';
+                msg += `\n**${i + 1}.** \`${v.package?.name ?? 'Unknown'}\` — ${v.package?.version ?? 'N/A'}\n`;
+                msg += `   ${sevEmoji} Severity: ${sev} | CVE: ${v.vulnerability?.id ?? 'N/A'}\n`;
+                msg += `   📋 ${v.vulnerability?.description?.slice(0, 80) ?? 'No description'}...\n`;
             });
 
-            if (vulns.length > 10) msg += `\n...and ${vulns.length - 10} more.`;
+            if (vulns.length > 10) msg += `\n...and ${vulns.length - 10} more. Use \`severity\` filter to narrow down.`;
 
             await interaction.editReply(msg);
         } catch (err) {

@@ -63,7 +63,7 @@ async function getAlerts(limit = 5, level = 1) {
             httpsAgent
         }
     );
-    return response.data.hits.hits.map(hit => hit._source);
+    return response.data.hits.hits.map(hit => ({ ...hit._source, _id: hit._id }));
 }
 
 async function getAgentDetails(name) {
@@ -111,8 +111,6 @@ async function getTopRules(limit = 5) {
 
 async function getVulnerabilities(agentName, severity = null) {
     const token = await getWazuhToken();
-
-    // First get agent ID from name
     const agentRes = await axios.get(
         `https://${TAILSCALE_IP}:55000/agents`,
         {
@@ -124,18 +122,39 @@ async function getVulnerabilities(agentName, severity = null) {
     const agent = agentRes.data.data.affected_items[0];
     if (!agent) throw new Error(`Agent ${agentName} not found`);
 
-    const params = { limit: 50 };
-    if (severity) params.severity = severity;
+    const severityOrder = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
 
-    const response = await axios.get(
-        `https://${TAILSCALE_IP}:55000/vulnerability/${agent.id}`,
+    const query = {
+        size: 50,
+        query: {
+            bool: {
+                must: [
+                    { match: { 'agent.id': agent.id } },
+                    ...(severity ? [{ match: { 'vulnerability.severity': severity } }] : [])
+                ]
+            }
+        }
+    };
+
+    const response = await axios.post(
+        `https://${TAILSCALE_IP}:9200/wazuh-states-vulnerabilities-*/_search`,
+        query,
         {
-            headers: { Authorization: `Bearer ${token}` },
-            params,
+            auth: { username: 'admin', password: 'Unub-1234' },
+            headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
     );
-    return response.data.data.affected_items;
+
+    // Sort by severity manually since indexer sorts alphabetically
+    const hits = response.data.hits.hits.map(h => h._source);
+    hits.sort((a, b) => {
+        const aScore = severityOrder[a.vulnerability?.severity] ?? 0;
+        const bScore = severityOrder[b.vulnerability?.severity] ?? 0;
+        return bScore - aScore;
+    });
+
+    return hits;
 }
 
 module.exports = {

@@ -3,5 +3,6 @@
     "clientId":"1470451564672979116",
     "guildId":"1362843884358729841",
     "alertChannelId": "1470467620397519082",
-    "vtApiKey": "a4b12620bb3026a700cf88d7188ecf7c248b58d69fe2ac4a8f1d28cdb2e04a4a" 
+    "vtApiKey": "a4b12620bb3026a700cf88d7188ecf7c248b58d69fe2ac4a8f1d28cdb2e04a4a",
+    "alertMentionId": "528582346581082144"
 }
