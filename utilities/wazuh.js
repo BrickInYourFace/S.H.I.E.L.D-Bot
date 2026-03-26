@@ -157,11 +157,43 @@ async function getVulnerabilities(agentName, severity = null) {
     return hits;
 }
 
+async function getOpenPorts(agentName, protocol = 'both') {
+    const token = await getWazuhToken();
+
+    // Get agent ID
+    const agentRes = await axios.get(
+        `https://${TAILSCALE_IP}:55000/agents`,
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { search: agentName },
+            httpsAgent
+        }
+    );
+    const agent = agentRes.data.data.affected_items[0];
+    if (!agent) throw new Error(`Agent ${agentName} not found`);
+
+    const params = { limit: 100, sort: '+local.port' };
+    if (protocol !== 'both') params.protocol = protocol;
+
+    const response = await axios.get(
+        `https://${TAILSCALE_IP}:55000/syscollector/${agent.id}/ports`,
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            params,
+            httpsAgent
+        }
+    );
+
+    return response.data.data.affected_items;
+}
+
+
 module.exports = {
     getAgents,
     getManagerStatus,
     getAlerts,
     getAgentDetails,
     getTopRules,
-    getVulnerabilities
+    getVulnerabilities,
+    getOpenPorts
 };
