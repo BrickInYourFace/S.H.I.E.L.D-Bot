@@ -29,7 +29,6 @@ module.exports = {
             });
             const toprulesEmbed = new EmbedBuilder()
                 .setAuthor({ name: 'Developed By The S.H.I.E.L.D Team' })
-                .setTitle('Number of rules to show (default: 5, max: 10)')
                 .setDescription(msg)
                 .setColor('#52afed')
                 .setTimestamp()
