@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getTopRules } = require('../../utilities/wazuh');
 
 module.exports = {
@@ -27,8 +27,13 @@ module.exports = {
                 msg += `\n**${i + 1}.** \`${rule.description}\`\n`;
                 msg += `   🔢 Rule ID: ${rule.id} | 🔴 Level: ${rule.level} | 📊 Count: ${rule.count}\n`;
             });
-
-            await interaction.editReply(msg);
+            const toprulesEmbed = new EmbedBuilder()
+                .setAuthor({ name: 'Developed By The S.H.I.E.L.D Team' })
+                .setTitle('Number of rules to show (default: 5, max: 10)')
+                .setDescription(msg)
+                .setColor('#52afed')
+                .setTimestamp()
+            await interaction.editReply({ embeds: [toprulesEmbed] });
         } catch (err) {
             await interaction.editReply('❌ Error fetching top rules: ' + err.message);
         }
