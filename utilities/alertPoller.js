@@ -16,7 +16,7 @@ async function startAlertPoller(client, channelId) {
     setInterval(async () => {
         try {
             console.log('🔍 Polling for new alerts...');
-            const alerts = await getAlerts(50, 10); // change 1 back to 10 after testing
+            const alerts = await getAlerts(50, 12); // change 1 back to 10 after testing
 
             const newAlerts = alerts.filter(a => {
                 const id = a._id ?? `${a.timestamp}-${a.rule?.id}`;
