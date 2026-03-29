@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { getAgentDetails } = require('../../utilities/wazuh');
+const { getAgentDetails, getAgents } = require('../../utilities/wazuh');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,7 +9,19 @@ module.exports = {
             option.setName('name')
                 .setDescription('Agent name to look up')
                 .setRequired(true)
+                .setAutocomplete(true)
         ),
+
+    async autocomplete(interaction) {
+        const focused = interaction.options.getFocused().toLowerCase();
+        const agents = await getAgents();
+        const choices = agents
+            .filter(a => a.id !== '000' && a.name.toLowerCase().includes(focused))
+            .map(a => ({ name: `${a.name} (${a.status})`, value: a.name }))
+            .slice(0, 25);
+        await interaction.respond(choices);
+    },
+
     async execute(interaction) {
         await interaction.deferReply();
         try {

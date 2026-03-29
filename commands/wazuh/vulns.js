@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { getVulnerabilities } = require('../../utilities/wazuh');
+const { getVulnerabilities, getAgents } = require('../../utilities/wazuh');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,6 +9,7 @@ module.exports = {
             option.setName('agent')
                 .setDescription('Agent name to check')
                 .setRequired(true)
+                .setAutocomplete(true)
         )
         .addStringOption(option =>
             option.setName('severity')
@@ -21,6 +22,17 @@ module.exports = {
                     { name: 'Low', value: 'Low' }
                 )
         ),
+
+    async autocomplete(interaction) {
+        const focused = interaction.options.getFocused().toLowerCase();
+        const agents = await getAgents();
+        const choices = agents
+            .filter(a => a.id !== '000' && a.name.toLowerCase().includes(focused))
+            .map(a => ({ name: `${a.name} (${a.status})`, value: a.name }))
+            .slice(0, 25);
+        await interaction.respond(choices);
+    },
+
     async execute(interaction) {
         await interaction.deferReply();
         try {
@@ -32,7 +44,7 @@ module.exports = {
                 return await interaction.editReply(`✅ No vulnerabilities found for \`${agentName}\``);
             }
 
-            let msg = `**Vulnerabilities on \`${agentName}\`${severity ? ` (${severity})` : ''}:**\n`; //the chosen severity will be >=
+            let msg = `**Vulnerabilities on \`${agentName}\`${severity ? ` (${severity})` : ''}:**\n`;
             vulns.slice(0, 10).forEach((v, i) => {
                 const sev = v.vulnerability?.severity ?? 'N/A';
                 const sevEmoji = sev === 'Critical' ? '🔴' : sev === 'High' ? '🟠' : sev === 'Medium' ? '🟡' : '🟢';

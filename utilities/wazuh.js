@@ -1,11 +1,13 @@
 const axios = require('axios');
 const https = require('https');
-
 const TAILSCALE_IP = '100.127.115.15'; //server ip
 const WAZUH_USER = 'wazuh-wui'; //wazuh api username
 const WAZUH_PASS = 'wazuh-wui'; // wazuh api password
-
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+//newly added
+let agentCache = [];
+let agentCacheTime = 0;
+const CACHE_TTL = 60000; // 1 minute
 
 async function getWazuhToken() {
     const response = await axios.post(
@@ -185,6 +187,24 @@ async function getOpenPorts(agentName, protocol = 'both') {
     );
 
     return response.data.data.affected_items;
+}
+async function getAgents() {
+    const now = Date.now();
+    if (agentCache.length > 0 && now - agentCacheTime < CACHE_TTL) {
+        return agentCache; // return cached result
+    }
+
+    const token = await getWazuhToken();
+    const response = await axios.get(
+        `https://${TAILSCALE_IP}:55000/agents`,
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            httpsAgent
+        }
+    );
+    agentCache = response.data.data.affected_items;
+    agentCacheTime = now;
+    return agentCache;
 }
 
 

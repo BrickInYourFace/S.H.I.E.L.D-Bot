@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { getOpenPorts } = require('../../utilities/wazuh');
+const { getOpenPorts, getAgents } = require('../../utilities/wazuh');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,6 +9,7 @@ module.exports = {
             opt.setName('agent')
                 .setDescription('Agent name to check')
                 .setRequired(true)
+                .setAutocomplete(true)
         )
         .addStringOption(opt =>
             opt.setName('protocol')
@@ -20,6 +21,17 @@ module.exports = {
                     { name: 'Both', value: 'both' }
                 )
         ),
+
+    async autocomplete(interaction) {
+        const focused = interaction.options.getFocused().toLowerCase();
+        const agents = await getAgents();
+        const choices = agents
+            .filter(a => a.id !== '000' && a.name.toLowerCase().includes(focused))
+            .map(a => ({ name: `${a.name} (${a.status})`, value: a.name }))
+            .slice(0, 25);
+        await interaction.respond(choices);
+    },
+
     async execute(interaction) {
         await interaction.deferReply();
         try {

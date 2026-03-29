@@ -1,84 +1,61 @@
-const { Events, Collection } = require('discord.js');
+const { Events } = require('discord.js');
 
 module.exports = {
     name: Events.InteractionCreate,
-    async execute(interaction, client) {
-        //Slash command listener with cooldowns:
-        if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
+    async execute(interaction) {
 
-        if (!command) {
-            console.error(`No command matching ${interaction.commandName} was found.`);
+        // Handle autocomplete
+        if (interaction.isAutocomplete()) {
+            const command = interaction.client.commands.get(interaction.commandName);
+            if (!command?.autocomplete) return;
+            try {
+                await command.autocomplete(interaction);
+            } catch (err) {
+                console.error('Autocomplete error:', err);
+            }
             return;
         }
 
-        const { cooldowns } = interaction.client;
+        // Handle slash commands
+        if (!interaction.isChatInputCommand()) return;
 
+        const command = interaction.client.commands.get(interaction.commandName);
+        if (!command) return;
+
+        const { cooldowns } = interaction.client;
         if (!cooldowns.has(command.data.name)) {
-            cooldowns.set(command.data.name, new Collection());
+            cooldowns.set(command.data.name, new Map());
         }
-            
+
         const now = Date.now();
         const timestamps = cooldowns.get(command.data.name);
-        const defaultCooldownDuration = 3;
-        const cooldownAmount = (command.cooldown ?? defaultCooldownDuration) * 1000;
+        const defaultCooldown = 3;
+        const cooldownAmount = (command.cooldown ?? defaultCooldown) * 1000;
 
         if (timestamps.has(interaction.user.id)) {
-            const expirationTime = timestamps.get(interaction.user.id) + cooldownAmount;
-
-            if (now < expirationTime) {
-                const expiredTimestamp = Math.round(expirationTime / 1000);
-                return interaction.reply({ content: `Please wait, you are on a cooldown for \`${command.data.name}\`. You can use it again <t:${expiredTimestamp}:R>.`, ephemeral: true });
+            const expiration = timestamps.get(interaction.user.id) + cooldownAmount;
+            if (now < expiration) {
+                const remaining = ((expiration - now) / 1000).toFixed(1);
+                return interaction.reply({
+                    content: `⏳ Please wait ${remaining}s before using \`${command.data.name}\` again.`,
+                    ephemeral: true
+                });
             }
         }
 
         timestamps.set(interaction.user.id, now);
         setTimeout(() => timestamps.delete(interaction.user.id), cooldownAmount);
-        
+
         try {
             await command.execute(interaction);
         } catch (error) {
             console.error(error);
+            const msg = { content: '❌ There was an error executing this command.', ephemeral: true };
             if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+                await interaction.followUp(msg);
             } else {
-                await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-            }
-            }
-        } //END OF SLASH COMMAND HANDLER
-
-        //Autocomplete listner
-        if (interaction.isAutocomplete()) {
-            // Handle autocomplete interactions
-            const command = client.commands.get(interaction.commandName);
-            if (command && command.autocomplete) {
-                await command.autocomplete(interaction);
+                await interaction.reply(msg);
             }
         }
-
-        //Modal submit listner (for complaints.js)
-        if (interaction.isModalSubmit()) {
-            const command = client.commands.get('complaints');
-            if (command && command.modalHandler) {
-                await command.modalHandler(interaction);
-            }
-        }
-        
-        //user context menu listener
-        if (interaction.isUserContextMenuCommand()) {
-            const command = client.commands.get(interaction.commandName);
-            if (command && command.execute) {
-                await command.execute(interaction);
-            }
-        }
-
-        //message context menu listner
-        if (interaction.isMessageContextMenuCommand()) {
-            const command = client.commands.get(interaction.commandName);
-            if (command && command.execute) {
-                await command.execute(interaction);
-            }
-        }
-        
-    },
+    }
 };
