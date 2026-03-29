@@ -23,10 +23,37 @@ module.exports = {
                     name: '/complaints',
                     value: 'Opens a form to submit complaints and suggestions.',
                 },
+
                 {
-                    name: ' /databasetest',
-                    value: 'Tests the database connection and  system integrity.',
+                    name: ' /agents',
+                    value: 'list all agents.',
+                },
+                {
+                    name: ' /alerts',
+                    value: 'recent alerts with level filter.',
+                },
+                {
+                    name: ' /status',
+                    value: ' manager service status.',
+                },
+                {
+                    name: ' /agent',
+                    value: 'detailed agent info.',
+                },
+                {
+                    name: ' /toprules',
+                    value: ' most triggered rules.',
+                },
+                {
+                    name: ' /vulns',
+                    value: ' vulnerability scanning.',
+                },
+                {
+                    name: ' /vt url/hash/file',
+                    value: ' VirusTotal integration.',
                 }
+
+
             )
             .setFooter({
                 text: 'S.H.I.E.L.D-Bot • Security & Monitoring System'

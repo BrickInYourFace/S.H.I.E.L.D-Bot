@@ -32,7 +32,7 @@ module.exports = {
                 },
                 {
                     name: '🎓 Developer Information',
-                    value: '**Lead Developer:** Leen Madadha\n' +
+                    value: '**Lead Developer:** S.H.I.E.L.D-Bot | Senior Project 2026\n' +
                         '**Institution:** Mutah University\n' +
                         '**Project Status:** Senior Project (Final Phase)'
                 }
