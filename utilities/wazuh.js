@@ -207,6 +207,37 @@ async function getAgents() {
     return agentCache;
 }
 
+async function threatHunt(query, limit = 5) {
+    const response = await axios.post(
+        `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
+        {
+            size: limit,
+            sort: [{ timestamp: { order: 'desc' } }],
+            query: {
+                multi_match: {
+                    query: query,
+                    fields: [
+                        'rule.description',
+                        'agent.name',
+                        'data.srcip',
+                        'data.dstip',
+                        'data.win.system.message',
+                        'data.srcuser',
+                        'data.dstuser',
+                        'full_log'
+                    ],
+                    type: 'phrase_prefix'
+                }
+            }
+        },
+        {
+            auth: { username: 'admin', password: 'Unub-1234' },
+            headers: { 'Content-Type': 'application/json' },
+            httpsAgent
+        }
+    );
+    return response.data.hits.hits.map(h => ({ ...h._source, _id: h._id }));
+}
 
 module.exports = {
     getAgents,
