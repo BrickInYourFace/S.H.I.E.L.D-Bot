@@ -50,7 +50,7 @@ module.exports = {
                 },
                 {
                     name: ' /vt url/hash/file',
-                    value: ' VirusTotal integration.',
+                    value: ' VirusTotal integration to test malware in urls, hashes, and files.',
                 }
 
 
