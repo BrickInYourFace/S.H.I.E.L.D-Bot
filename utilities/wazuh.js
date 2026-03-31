@@ -214,19 +214,21 @@ async function threatHunt(query, limit = 5) {
             size: limit,
             sort: [{ timestamp: { order: 'desc' } }],
             query: {
-                multi_match: {
-                    query: query,
+                query_string: {
+                    query: `*${query}*`,
                     fields: [
                         'rule.description',
                         'agent.name',
                         'data.srcip',
                         'data.dstip',
-                        'data.win.system.message',
                         'data.srcuser',
                         'data.dstuser',
-                        'full_log'
+                        'data.win.system.message',
+                        'data.win.system.computer',
+                        'full_log',
+                        'location'
                     ],
-                    type: 'phrase_prefix'
+                    default_operator: 'OR'
                 }
             }
         },
@@ -246,5 +248,6 @@ module.exports = {
     getAgentDetails,
     getTopRules,
     getVulnerabilities,
-    getOpenPorts
+    getOpenPorts,
+    threatHunt
 };

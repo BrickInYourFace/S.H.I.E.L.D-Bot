@@ -9,9 +9,26 @@ module.exports = {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command?.autocomplete) return;
             try {
-                await command.autocomplete(interaction);
+                // Check if interaction is still valid before responding
+                if (interaction.responded) return;
+                
+                // Set a timeout — if autocomplete takes more than 2.5s, skip it
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Autocomplete timeout')), 2500)
+                );
+
+                await Promise.race([
+                    command.autocomplete(interaction),
+                    timeoutPromise
+                ]);
             } catch (err) {
-                console.error('Autocomplete error:', err);
+                if (err.message === 'Autocomplete timeout') {
+                    console.warn(`⚠️ Autocomplete timed out for ${interaction.commandName} — using cache next time`);
+                } else if (err.code === 10062) {
+                    console.warn(`⚠️ Autocomplete interaction expired for ${interaction.commandName}`);
+                } else {
+                    console.error('Autocomplete error:', err);
+                }
             }
             return;
         }
