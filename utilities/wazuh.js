@@ -207,13 +207,48 @@ async function getAgents() {
     return agentCache;
 }
 
+ async function getAlertCountsPerAgent() {
+      const response = await axios.post(
+          `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
+          {
+              size: 0,
+              aggs: {
+                  by_agent: {
+                      terms: { field: 'agent.name.keyword', size: 50 },
+                      aggs: {
+                          critical: {
+                              filter: { range: { 'rule.level': { gte: 12 } } }
+                          },
+                          high: {
+                              filter: { range: { 'rule.level': { gte: 7, lt: 12 } } }
+                          },
+                          max_level: { max: { field: 'rule.level' } }
+                      }
+                  }
+              }
+          },
+          {
+              auth: { username: 'admin', password: 'Unub-1234' },
+              headers: { 'Content-Type': 'application/json' },
+              httpsAgent
+          }
+      );
 
-module.exports = {
-    getAgents,
-    getManagerStatus,
-    getAlerts,
-    getAgentDetails,
-    getTopRules,
-    getVulnerabilities,
-    getOpenPorts
-};
+      return response.data.aggregations.by_agent.buckets.map(b => ({
+          agentName: b.key,
+          total: b.doc_count,
+          critical: b.critical.doc_count,
+          high: b.high.doc_count,
+          maxLevel: b.max_level.value ?? 0
+      }));
+  }
+ module.exports = {
+      getAgents,
+      getManagerStatus,
+      getAlerts,
+      getAgentDetails,
+      getTopRules,
+      getVulnerabilities,
+      getOpenPorts,
+      getAlertCountsPerAgent
+  };
