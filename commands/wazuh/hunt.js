@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { threatHunt } = require('../../utilities/wazuh');
 
 const commonSuggestions = [
@@ -18,6 +18,20 @@ const commonSuggestions = [
     'sshd',
     'sudo',
 ];
+
+const levelColor = (level) => {
+    if (level >= 12) return 0xe74c3c;
+    if (level >= 10) return 0xe67e22;
+    if (level >= 7)  return 0xf1c40f;
+    return 0x95a5a6;
+};
+
+const levelEmoji = (level) => {
+    if (level >= 12) return '🔴 Critical';
+    if (level >= 10) return '🟠 High';
+    if (level >= 7)  return '🟡 Medium';
+    return '⚪ Low';
+};
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -39,14 +53,10 @@ module.exports = {
 
     async autocomplete(interaction) {
         const focused = interaction.options.getFocused().toLowerCase();
-
-        // Filter suggestions based on what user is typing
         const filtered = commonSuggestions
             .filter(s => s.includes(focused))
             .map(s => ({ name: s, value: s }))
             .slice(0, 25);
-
-        // If nothing matches, show all suggestions
         await interaction.respond(
             filtered.length > 0 ? filtered : commonSuggestions.slice(0, 25).map(s => ({ name: s, value: s }))
         );
@@ -58,37 +68,73 @@ module.exports = {
             const query = interaction.options.getString('query');
             const limit = interaction.options.getInteger('limit') ?? 5;
 
-            // If no query provided show help
             if (!query) {
-                return await interaction.editReply(
-                    '🔍 **Threat Hunt Usage:**\n' +
-                    'Provide a keyword, IP address, or username to search across all alerts.\n\n' +
-                    '**Examples:**\n' +
-                    '• `/hunt query:192.168.1.100` — search by IP\n' +
-                    '• `/hunt query:administrator` — search by username\n' +
-                    '• `/hunt query:brute force` — search by keyword\n' +
-                    '• `/hunt query:powershell limit:10` — search with limit'
-                );
+                const helpEmbed = new EmbedBuilder()
+                    .setColor(0x5865F2)
+                    .setTitle('🔍 Threat Hunt')
+                    .setDescription('Search alerts across all agents by keyword, IP address, or username.')
+                    .addFields(
+                        {
+                            name: 'Options',
+                            value: '`query` — keyword, IP, or username\n`limit` — number of results (1–10, default 5)'
+                        },
+                        {
+                            name: 'Examples',
+                            value: [
+                                '`/hunt query:192.168.1.100` — search by IP',
+                                '`/hunt query:administrator` — search by username',
+                                '`/hunt query:brute force` — search by keyword',
+                                '`/hunt query:powershell limit:10` — with limit',
+                            ].join('\n')
+                        }
+                    )
+                    .setFooter({ text: 'S.H.I.E.L.D Bot • Threat Intelligence' });
+                return await interaction.editReply({ embeds: [helpEmbed] });
             }
 
             const results = await threatHunt(query, limit);
 
             if (!results.length) {
-                return await interaction.editReply(`🔍 No alerts found matching \`${query}\``);
+                const emptyEmbed = new EmbedBuilder()
+                    .setColor(0x95a5a6)
+                    .setTitle('🔍 No Results Found')
+                    .setDescription(`No alerts matched \`${query}\``)
+                    .setTimestamp()
+                    .setFooter({ text: 'S.H.I.E.L.D Bot • Threat Intelligence' });
+                return await interaction.editReply({ embeds: [emptyEmbed] });
             }
 
-            let msg = `**🔍 Threat Hunt Results for \`${query}\` (${results.length} found):**\n`;
+            const highestLevel = Math.max(...results.map(a => a.rule?.level ?? 0));
+
+            const embed = new EmbedBuilder()
+                .setColor(levelColor(highestLevel))
+                .setTitle(`🔍 Threat Hunt — \`${query}\``)
+                .setDescription(`Found **${results.length}** alert${results.length > 1 ? 's' : ''}`)
+                .setTimestamp()
+                .setFooter({ text: 'S.H.I.E.L.D Bot • Threat Intelligence' });
+
             results.forEach((alert, i) => {
                 const level = alert.rule?.level ?? 0;
-                const emoji = level >= 12 ? '🔴' : level >= 10 ? '🟠' : level >= 7 ? '🟡' : '⚪';
-                msg += `\n**${i + 1}.** ${emoji} \`${alert.rule?.description ?? 'Unknown'}\`\n`;
-                msg += `   🖥️ Agent: ${alert.agent?.name ?? 'N/A'} | 🔢 Level: ${level}\n`;
-                msg += `   🕒 ${new Date(alert.timestamp).toLocaleString()}\n`;
+                embed.addFields({
+                    name: `${i + 1}. ${levelEmoji(level)} — Level ${level}`,
+                    value: [
+                        `**${alert.rule?.description ?? 'Unknown'}**`,
+                        `🖥️ Agent: \`${alert.agent?.name ?? 'N/A'}\``,
+                        `🕒 ${new Date(alert.timestamp).toLocaleString()}`,
+                    ].join('\n'),
+                });
             });
 
-            await interaction.editReply(msg);
+            await interaction.editReply({ embeds: [embed] });
+
         } catch (err) {
-            await interaction.editReply('❌ Error: ' + err.message);
+            const errEmbed = new EmbedBuilder()
+                .setColor(0xe74c3c)
+                .setTitle('❌ Error')
+                .setDescription(err.message)
+                .setTimestamp()
+                .setFooter({ text: 'S.H.I.E.L.D Bot • Threat Intelligence' });
+            await interaction.editReply({ embeds: [errEmbed] });
         }
     }
 };

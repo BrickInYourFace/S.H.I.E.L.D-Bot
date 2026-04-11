@@ -11,7 +11,7 @@ module.exports = {
             try {
                 if (interaction.responded) return;
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Autocomplete timeout')), 2500)
+                    setTimeout(() => reject(new Error('Autocomplete timeout')), 4500)
                 );
                 await Promise.race([
                     command.autocomplete(interaction),
