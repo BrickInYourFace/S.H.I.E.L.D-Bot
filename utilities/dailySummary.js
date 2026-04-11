@@ -1,5 +1,5 @@
 const { getAlerts, getAgents, getTopRules } = require('./wazuh');
-const { alertMentionId } = require('../config.json');
+const alertMentionId = process.env.ALERT_MENTION_ID;
 const fs = require('fs');
 const path = require('path');
 

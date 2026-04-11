@@ -3,7 +3,7 @@ const { scanUrl, scanHash, scanFile } = require('../../utilities/virustotal');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('vt')
+        .setName('virustotal')
         .setDescription('Scan using VirusTotal')
         .addSubcommand(sub =>
             sub.setName('url')

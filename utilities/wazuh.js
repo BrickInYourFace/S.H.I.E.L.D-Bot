@@ -1,9 +1,13 @@
 const axios = require('axios');
 const https = require('https');
-const TAILSCALE_IP = '100.127.115.15'; //server ip
-const WAZUH_USER = 'wazuh-wui'; //wazuh api username
-const WAZUH_PASS = 'wazuh-wui'; // wazuh api password
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+//credentials
+const TAILSCALE_IP = process.env.WAZUH_IP; //server ""local"" ip
+const WAZUH_USER = process.env.WAZUH_USER; //api username
+const WAZUH_PASS = process.env.WAZUH_PASS; //api password
+const INDEXER_USER = process.env.WAZUH_INDEXER_USER; //dashboard/indexer username
+const INDEXER_PASS = process.env.WAZUH_INDEXER_PASS; //dashboard/indexer password
+
 //newly added
 let agentCache = [];
 let agentCacheTime = 0;
@@ -60,7 +64,7 @@ async function getAlerts(limit = 5, level = 1) {
             }
         },
         {
-            auth: { username: 'admin', password: 'Unub-1234' },
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
             headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
@@ -97,7 +101,7 @@ async function getTopRules(limit = 5) {
             }
         },
         {
-            auth: { username: 'admin', password: 'Unub-1234' },
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
             headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
@@ -142,7 +146,7 @@ async function getVulnerabilities(agentName, severity = null) {
         `https://${TAILSCALE_IP}:9200/wazuh-states-vulnerabilities-*/_search`,
         query,
         {
-            auth: { username: 'admin', password: 'Unub-1234' },
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
             headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
@@ -188,6 +192,7 @@ async function getOpenPorts(agentName, protocol = 'both') {
 
     return response.data.data.affected_items;
 }
+
 async function getAgents() {
     const now = Date.now();
     if (agentCache.length > 0 && now - agentCacheTime < CACHE_TTL) {
@@ -233,7 +238,7 @@ async function threatHunt(query, limit = 5) {
             }
         },
         {
-            auth: { username: 'admin', password: 'Unub-1234' },
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
             headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
