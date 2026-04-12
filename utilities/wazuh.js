@@ -49,19 +49,19 @@ async function getManagerStatus() {
     return response.data.data.affected_items[0];
 }
 
-async function getAlerts(limit = 5, level = 1) {
+// Modified by Dana — added optional agentName param to filter alerts by a specific agent
+// if agentName is not provided, behaves exactly as before (all agents)
+async function getAlerts(limit = 5, level = 1, agentName = null) {
+    const must = [{ range: { 'rule.level': { gte: level } } }];
+    // only add agent filter if the user specified one
+    if (agentName) must.push({ match: { 'agent.name': agentName } });
+
     const response = await axios.post(
         `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
         {
             size: limit,
             sort: [{ timestamp: { order: 'desc' } }],
-            query: {
-                range: {
-                    'rule.level': {
-                        gte: level
-                    }
-                }
-            }
+            query: { bool: { must } }
         },
         {
             auth: { username: INDEXER_USER, password: INDEXER_PASS },
@@ -212,6 +212,24 @@ async function getAgents() {
     return agentCache;
 }
 
+// Added by Dana , used by /search command to fetch alerts filter by exact rule ID
+async function getAlertsByRuleId(ruleId, limit = 5) {
+    const response = await axios.post(
+        `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
+        {
+            size: limit,
+            sort: [{ timestamp: { order: 'desc' } }],
+            query: { term: { 'rule.id': String(ruleId) } }
+        },
+        {
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
+            headers: { 'Content-Type': 'application/json' },
+            httpsAgent
+        }
+    );
+    return response.data.hits.hits.map(h => ({ ...h._source, _id: h._id }));
+}
+
 async function threatHunt(query, limit = 5) {
     const response = await axios.post(
         `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
@@ -254,5 +272,6 @@ module.exports = {
     getTopRules,
     getVulnerabilities,
     getOpenPorts,
-    threatHunt
+    threatHunt,
+    getAlertsByRuleId // Added by Dana ,exported for /search command
 };

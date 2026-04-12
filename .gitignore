@@ -10,3 +10,6 @@ data/lastAlertTimestamp.json
 
 # Logs
 *.log
+
+# Claude Code
+.claude/

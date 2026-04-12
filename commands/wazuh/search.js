@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const { getAlerts, getAgents } = require('../../utilities/wazuh');
+const { getAlertsByRuleId } = require('../../utilities/wazuh');
 const path = require('path');
 
 const SEVERITY = [
@@ -12,45 +12,29 @@ const SEVERITY = [
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('alerts')
-        .setDescription('Show recent security alerts from Wazuh')
+        .setName('search')
+        .setDescription('Fetch all alerts triggered by a specific Wazuh rule ID')
+        .addStringOption(o => o
+            .setName('rule_id')
+            .setDescription('The Wazuh rule ID to search for (e.g. 5710)')
+            .setRequired(true))
         .addIntegerOption(o => o
             .setName('limit')
             .setDescription('Number of alerts to show (default: 5, max: 10)')
-            .setMinValue(1).setMaxValue(10).setRequired(false))
-        .addIntegerOption(o => o
-            .setName('level')
-            .setDescription('Minimum severity level (default: 1, max: 15)')
-            .setMinValue(1).setMaxValue(15).setRequired(false))
-        .addStringOption(o => o
-            .setName('agent')
-            .setDescription('Filter alerts by agent name (default: all agents)')
-            .setRequired(false)
-            .setAutocomplete(true)),
-
-    async autocomplete(interaction) {
-        const focused = interaction.options.getFocused().toLowerCase();
-        const agents = await getAgents();
-        const choices = agents
-            .filter(a => a.id !== '000' && a.name.toLowerCase().includes(focused))
-            .map(a => ({ name: `${a.name} (${a.status})`, value: a.name }))
-            .slice(0, 25);
-        await interaction.respond(choices);
-    },
+            .setMinValue(1).setMaxValue(10).setRequired(false)),
 
     async execute(interaction) {
         await interaction.deferReply();
 
+        const ruleId = interaction.options.getString('rule_id').trim();
+        const limit  = interaction.options.getInteger('limit') ?? 5;
+
         try {
-            const limit     = interaction.options.getInteger('limit') ?? 5;
-            const level     = interaction.options.getInteger('level') ?? 1;
-            const agentName = interaction.options.getString('agent') ?? null;
-            const alerts    = await getAlerts(limit, level, agentName);
+            const alerts = await getAlertsByRuleId(ruleId, limit);
 
             if (!alerts || alerts.length === 0) {
-                const agentNote = agentName ? ` for agent **${agentName}**` : '';
                 return await interaction.editReply({
-                    content: `✅ No alerts found at level **${level}** or above${agentNote}.`
+                    content: `🔍 No alerts found for rule ID **${ruleId}**.`
                 });
             }
 
@@ -63,13 +47,13 @@ module.exports = {
                 const sev = SEVERITY.find(s => lvl >= s.min);
 
                 return new EmbedBuilder()
-                    .setAuthor({ name: 'S.H.I.E.L.D Bot — Wazuh Alert' })
-                    .setTitle(`⚠️ ${alert.rule?.description ?? 'Unknown Rule'}`)
+                    .setAuthor({ name: 'S.H.I.E.L.D Bot — Rule Search' })
+                    .setTitle(`🔎 ${alert.rule?.description ?? 'Unknown Rule'}`)
                     .setColor(sev.color)
                     .addFields(
+                        { name: '📋 Rule ID',  value: `\`${alert.rule?.id ?? ruleId}\``,                                     inline: true  },
                         { name: '🛡️ Severity', value: `${sev.label} (Level ${lvl})`,                                        inline: true  },
                         { name: '🖥️ Agent',    value: `${alert.agent?.name ?? 'N/A'} (ID: ${alert.agent?.id ?? 'N/A'})`,    inline: true  },
-                        { name: '📋 Rule ID',  value: `\`${alert.rule?.id ?? 'N/A'}\``,                                     inline: true  },
                         { name: '📁 Location', value: `\`${alert.location ?? 'N/A'}\``,                                     inline: false },
                         { name: '🏷️ Groups',   value: alert.rule?.groups?.join(', ') ?? 'N/A',                              inline: false },
                         { name: '🕒 Time',     value: alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'N/A', inline: false },
@@ -79,12 +63,11 @@ module.exports = {
                     .setTimestamp();
             });
 
-            // Discord allows max 10 embeds per message
             await interaction.editReply({ embeds, files: [file] });
 
         } catch (err) {
             await interaction.editReply({
-                content: `❌ Error fetching alerts: ${err.message}`
+                content: `❌ Error searching for rule **${ruleId}**: ${err.message}`
             });
         }
     }
