@@ -9,9 +9,33 @@ module.exports = {
             const command = interaction.client.commands.get(interaction.commandName);
             if (!command?.autocomplete) return;
             try {
-                await command.autocomplete(interaction);
+                if (interaction.responded) return;
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Autocomplete timeout')), 4500)
+                );
+                await Promise.race([
+                    command.autocomplete(interaction),
+                    timeoutPromise
+                ]);
             } catch (err) {
-                console.error('Autocomplete error:', err);
+                if (err.message === 'Autocomplete timeout') {
+                    console.warn(`⚠️ Autocomplete timed out for ${interaction.commandName}`);
+                } else if (err.code === 10062) {
+                    console.warn(`⚠️ Autocomplete interaction expired for ${interaction.commandName}`);
+                } else {
+                    console.error('Autocomplete error:', err);
+                }
+            }
+            return;
+        }
+
+        // ✅ Handle modal submissions — must be BEFORE the isChatInputCommand() return
+        if (interaction.isModalSubmit()) {
+            if (interaction.customId === 'complaints') {
+                const complaints = interaction.client.commands.get('complaints');
+                if (complaints?.modalHandler) {
+                    await complaints.modalHandler(interaction);
+                }
             }
             return;
         }

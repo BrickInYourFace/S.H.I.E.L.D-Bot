@@ -1,6 +1,6 @@
 const { Events } = require('discord.js');
 const { startAlertPoller } = require('../utilities/alertPoller');
-const { alertChannelId, alertMentionId} = require('../config.json');
+const { alertChannelId, alertMentionId} = require('../config.js');
 const { scheduleDailySummary } = require('../utilities/dailySummary');
 module.exports = {
 	name: Events.ClientReady,

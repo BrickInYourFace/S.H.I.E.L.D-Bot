@@ -24,7 +24,7 @@ const sevThumbnail = {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('vulns')
+        .setName('vulnerabilities')
         .setDescription('Show vulnerabilities detected on an agent')
         .addStringOption(option =>
             option.setName('agent')

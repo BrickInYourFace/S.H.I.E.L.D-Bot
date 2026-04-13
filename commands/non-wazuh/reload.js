@@ -1,30 +1,68 @@
 const { SlashCommandBuilder } = require('discord.js');
-//this command allows us to reload commands (fix them)
-// without restarting the bot, we type the command name in the slash command to realood it.
+const path = require('path');
+const fs = require('fs');
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('reload')
-        .setDescription('Reloads a command.')
+        .setDescription('Reloads a command without restarting the bot.')
         .addStringOption(option =>
             option.setName('command')
                 .setDescription('The command to reload.')
-                .setRequired(true)),
+                .setRequired(true)
+                .setAutocomplete(true)),
+
+    async autocomplete(interaction) {
+        const focused = interaction.options.getFocused().toLowerCase();
+        const commands = [...interaction.client.commands.values()];
+        const choices = commands
+            .filter(c => c.data.name.includes(focused))
+            .map(c => ({ name: c.data.name, value: c.data.name }))
+            .slice(0, 25);
+        await interaction.respond(choices);
+    },
+
     async execute(interaction) {
         const commandName = interaction.options.getString('command', true).toLowerCase();
         const command = interaction.client.commands.get(commandName);
 
         if (!command) {
-            return interaction.reply(`There is no command with name \`${commandName}\`!`);
+            return interaction.reply({ content: `❌ No command found with name \`${commandName}\`!`, ephemeral: true });
         }
-        delete require.cache[require.resolve(`./${command.data.name}.js`)];
+
+        // Search for the command file across all subfolders
+        const commandsPath = path.join(__dirname, '..');
+        let commandFilePath = null;
+
+        const folders = fs.readdirSync(commandsPath);
+        for (const folder of folders) {
+            const folderPath = path.join(commandsPath, folder);
+            if (!fs.statSync(folderPath).isDirectory()) continue;
+
+            const files = fs.readdirSync(folderPath).filter(f => f.endsWith('.js'));
+            for (const file of files) {
+                if (file === `${commandName}.js`) {
+                    commandFilePath = path.join(folderPath, file);
+                    break;
+                }
+            }
+            if (commandFilePath) break;
+        }
+
+        if (!commandFilePath) {
+            return interaction.reply({ content: `❌ Could not find file for command \`${commandName}\`!`, ephemeral: true });
+        }
+
+        // Delete cache and reload
+        delete require.cache[require.resolve(commandFilePath)];
 
         try {
-            const newCommand = require(`./${command.data.name}.js`);
+            const newCommand = require(commandFilePath);
             interaction.client.commands.set(newCommand.data.name, newCommand);
-            await interaction.reply(`Command \`${newCommand.data.name}\` was reloaded!`);
+            await interaction.reply({ content: `✅ Command \`${newCommand.data.name}\` was reloaded!`, ephemeral: true });
         } catch (error) {
             console.error(error);
-            await interaction.reply(`There was an error while reloading a command \`${command.data.name}\`:\n\`${error.message}\``);
-}
+            await interaction.reply({ content: `❌ Error reloading \`${commandName}\`:\n\`${error.message}\``, ephemeral: true });
+        }
     },
 };

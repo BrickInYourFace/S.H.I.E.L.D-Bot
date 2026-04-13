@@ -1,9 +1,13 @@
 const axios = require('axios');
 const https = require('https');
-const TAILSCALE_IP = '100.127.115.15'; //server ip
-const WAZUH_USER = 'wazuh-wui'; //wazuh api username
-const WAZUH_PASS = 'wazuh-wui'; // wazuh api password
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+//credentials
+const TAILSCALE_IP = process.env.WAZUH_IP; //server ""local"" ip
+const WAZUH_USER = process.env.WAZUH_USER; //api username
+const WAZUH_PASS = process.env.WAZUH_PASS; //api password
+const INDEXER_USER = process.env.WAZUH_INDEXER_USER; //dashboard/indexer username
+const INDEXER_PASS = process.env.WAZUH_INDEXER_PASS; //dashboard/indexer password
+
 //newly added
 let agentCache = [];
 let agentCacheTime = 0;
@@ -45,22 +49,22 @@ async function getManagerStatus() {
     return response.data.data.affected_items[0];
 }
 
-async function getAlerts(limit = 5, level = 1) {
+// Modified by Dana — added optional agentName param to filter alerts by a specific agent
+// if agentName is not provided, behaves exactly as before (all agents)
+async function getAlerts(limit = 5, level = 1, agentName = null) {
+    const must = [{ range: { 'rule.level': { gte: level } } }];
+    // only add agent filter if the user specified one
+    if (agentName) must.push({ match: { 'agent.name': agentName } });
+
     const response = await axios.post(
         `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
         {
             size: limit,
             sort: [{ timestamp: { order: 'desc' } }],
-            query: {
-                range: {
-                    'rule.level': {
-                        gte: level
-                    }
-                }
-            }
+            query: { bool: { must } }
         },
         {
-            auth: { username: 'admin', password: 'Unub-1234' },
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
             headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
@@ -97,7 +101,7 @@ async function getTopRules(limit = 5) {
             }
         },
         {
-            auth: { username: 'admin', password: 'Unub-1234' },
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
             headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
@@ -142,7 +146,7 @@ async function getVulnerabilities(agentName, severity = null) {
         `https://${TAILSCALE_IP}:9200/wazuh-states-vulnerabilities-*/_search`,
         query,
         {
-            auth: { username: 'admin', password: 'Unub-1234' },
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
             headers: { 'Content-Type': 'application/json' },
             httpsAgent
         }
@@ -188,6 +192,7 @@ async function getOpenPorts(agentName, protocol = 'both') {
 
     return response.data.data.affected_items;
 }
+
 async function getAgents() {
     const now = Date.now();
     if (agentCache.length > 0 && now - agentCacheTime < CACHE_TTL) {
@@ -207,6 +212,57 @@ async function getAgents() {
     return agentCache;
 }
 
+// Added by Dana , used by /search command to fetch alerts filter by exact rule ID
+async function getAlertsByRuleId(ruleId, limit = 5) {
+    const response = await axios.post(
+        `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
+        {
+            size: limit,
+            sort: [{ timestamp: { order: 'desc' } }],
+            query: { term: { 'rule.id': String(ruleId) } }
+        },
+        {
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
+            headers: { 'Content-Type': 'application/json' },
+            httpsAgent
+        }
+    );
+    return response.data.hits.hits.map(h => ({ ...h._source, _id: h._id }));
+}
+
+async function threatHunt(query, limit = 5) {
+    const response = await axios.post(
+        `https://${TAILSCALE_IP}:9200/wazuh-alerts-*/_search`,
+        {
+            size: limit,
+            sort: [{ timestamp: { order: 'desc' } }],
+            query: {
+                query_string: {
+                    query: `*${query}*`,
+                    fields: [
+                        'rule.description',
+                        'agent.name',
+                        'data.srcip',
+                        'data.dstip',
+                        'data.srcuser',
+                        'data.dstuser',
+                        'data.win.system.message',
+                        'data.win.system.computer',
+                        'full_log',
+                        'location'
+                    ],
+                    default_operator: 'OR'
+                }
+            }
+        },
+        {
+            auth: { username: INDEXER_USER, password: INDEXER_PASS },
+            headers: { 'Content-Type': 'application/json' },
+            httpsAgent
+        }
+    );
+    return response.data.hits.hits.map(h => ({ ...h._source, _id: h._id }));
+}
 
 module.exports = {
     getAgents,
@@ -215,5 +271,7 @@ module.exports = {
     getAgentDetails,
     getTopRules,
     getVulnerabilities,
-    getOpenPorts
+    getOpenPorts,
+    threatHunt,
+    getAlertsByRuleId // Added by Dana ,exported for /search command
 };

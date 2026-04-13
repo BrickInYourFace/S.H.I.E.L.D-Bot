@@ -1,0 +1,15 @@
+# data files
+data/lastSummaryTimestamp.json
+data/lastAlertTimestamp.json
+
+# Environment
+#.env
+
+# Dependencies
+#node_modules/
+
+# Logs
+*.log
+
+# Claude Code
+.claude/

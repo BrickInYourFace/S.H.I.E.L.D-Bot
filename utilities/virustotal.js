@@ -1,9 +1,9 @@
 const axios = require('axios');
 const FormData = require('form-data');
-const { vtApiKey } = require('../config.json');
-
-const VT_BASE = 'https://www.virustotal.com/api/v3';
+const vtApiKey = process.env.VT_API_KEY;
 const headers = { 'x-apikey': vtApiKey };
+const VT_BASE = 'https://www.virustotal.com/api/v3';
+
 
 // Helper to build result object from analysis
 function buildResult(attributes, analysisId, type) {
