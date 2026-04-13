@@ -10,7 +10,7 @@ module.exports = {
             if (!command?.autocomplete) return;
             try {
                 if (interaction.responded) return;
-                const timeoutPromise = new Promise((_, reject) => 
+                const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Autocomplete timeout')), 4500)
                 );
                 await Promise.race([
@@ -28,6 +28,37 @@ module.exports = {
             }
             return;
         }
+        //  leen testing help command with button 
+        if (interaction.isButton()) {
+            const commandMap = {
+                cmd_about: 'about',
+                cmd_complaints: 'complaints',
+                cmd_agents: 'agents',
+                cmd_alerts: 'alerts',
+                cmd_status: 'status',
+                cmd_agent: 'agent',
+                cmd_toprules: 'toprules',
+                cmd_vulns: 'vulns',
+            };
+            const commandName = commandMap[interaction.customId];
+            if (!commandName) return;
+
+            const command = interaction.client.commands.get(commandName);
+            if (!command) return;
+
+            try {
+                await command.execute(interaction);
+            } catch (error) {
+                console.error(`Button error for /${commandName}:`, error);
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
+                } else {
+                    await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
+                }
+            }
+            return; // ← important, stops it falling into the slash command handler below
+        }
+        ///------------------------------------------
 
         // ✅ Handle modal submissions — must be BEFORE the isChatInputCommand() return
         if (interaction.isModalSubmit()) {
