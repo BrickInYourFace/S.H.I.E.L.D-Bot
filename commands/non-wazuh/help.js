@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 const {
     SlashCommandBuilder,
     EmbedBuilder,
@@ -39,6 +40,10 @@ function buildButtonRows(commands) {
     }
     return rows;
 }
+=======
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+// FIXED: Removed invalid `require('react')` — this is a Discord bot, not a React app
+>>>>>>> Stashed changes
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -48,6 +53,7 @@ module.exports = {
     async execute(interaction) {
         const helpEmbed = new EmbedBuilder()
             .setColor(0x2b2d31)
+<<<<<<< Updated upstream
             .setTitle('🛡️ S.H.I.E.L.D-Bot Help Menu')
             .setDescription(
                 '**Welcome to the Help command of S.H.I.E.L.D-Bot<3**\n' +
@@ -63,9 +69,47 @@ module.exports = {
             .setFooter({ text: 'S.H.I.E.L.D-Bot • Security & Monitoring System' });
 
         const rows = buildButtonRows(commands);
+=======
+            .setTitle('S.H.I.E.L.D-Bot Help Menu')
+            .setDescription(
+                '**Welcome to the Help command of S.H.I.E.L.D-Bot<3**\n' +
+                'Here you can find all available commands and their purposes.\n' +
+                'Click a button below to run a command directly!'
+            )
+            .addFields(
+                { name: '/about', value: 'Displays information about S.H.I.E.L.D-Bot and its purpose.' },
+                { name: '/complaints', value: 'Opens a form to submit complaints and suggestions.' },
+                { name: '/agents', value: 'List all agents.' },
+                { name: '/alerts', value: 'Recent alerts with level filter.' },
+                { name: '/status', value: 'Manager service status.' },
+                { name: '/agent', value: 'Detailed agent info.' },
+                { name: '/toprules', value: 'Most triggered rules.' },
+                { name: '/vulns', value: 'Vulnerability scanning.' },
+                { name: '/vt', value: 'VirusTotal integration for URLs, hashes, and files.' }
+            )
+            .setFooter({ text: 'S.H.I.E.L.D-Bot • Security & Monitoring System' });
+>>>>>>> Stashed changes
 
-        await interaction.reply({
+        // FIXED: `.setDisabled()` takes a boolean, not a label string — use `.setLabel()` instead
+        const row1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('cmd_about').setLabel('/about').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('cmd_complaints').setLabel('/complaints').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('cmd_agents').setLabel('/agents').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('cmd_alerts').setLabel('/alerts').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('cmd_status').setLabel('/status').setStyle(ButtonStyle.Primary),
+        );
+
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('cmd_agent').setLabel('/agent').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('cmd_toprules').setLabel('/toprules').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('cmd_vulns').setLabel('/vulns').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('cmd_vt').setLabel('/vt').setStyle(ButtonStyle.Secondary),
+        );
+
+        // FIXED: `Components` → `components` (lowercase), and store the reply as `response`
+        const response = await interaction.reply({
             embeds: [helpEmbed],
+<<<<<<< Updated upstream
             components: rows,
             flags: MessageFlags.Ephemeral,
         });
@@ -111,6 +155,46 @@ module.exports = {
             await interaction.editReply({
                 content: `❌ Failed to run \`/${commandName}\`. Please try again.`,
             });
+=======
+            components: [row1, row2],
+            flags: MessageFlags.Ephemeral
+        });
+
+        const collectorFilter = i => i.user.id === interaction.user.id;
+
+        try {
+            // FIXED: `response.resource.message` → `response` directly (interaction.reply() returns an InteractionResponse)
+            const confirmation = await response.awaitMessageComponent({ filter: collectorFilter, time: 60_000 });
+
+            // Trigger the matching slash command
+            const commandMap = {
+                cmd_about: 'about',
+                cmd_complaints: 'complaints',
+                cmd_agents: 'agents',
+                cmd_alerts: 'alerts',
+                cmd_status: 'status',
+                cmd_agent: 'agent',
+                cmd_toprules: 'toprules',
+                cmd_vulns: 'vulns',
+                cmd_vt: 'vt',
+            };
+
+            const commandName = commandMap[confirmation.customId];
+            const command = interaction.client.commands.get(commandName);
+
+            if (!command) {
+                await confirmation.update({ content: `Command \`/${commandName}\` not found.`, components: [] });
+                return;
+            }
+
+            // Defer the update so we can hand off to the command
+            await confirmation.update({ content: `Running \`/${commandName}\`...`, components: [] });
+            await command.execute(confirmation);
+
+        } catch {
+            // FIXED: `interaction.editReply` is correct here for a timed-out collector
+            await interaction.editReply({ content: 'No command selected within 1 minute. Cancelled.', components: [] });
+>>>>>>> Stashed changes
         }
     },
 };
