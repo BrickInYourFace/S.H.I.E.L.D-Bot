@@ -26,7 +26,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('Wazuh Agents')
                 .setDescription(description)
-                .setColor(0x800080) 
+                .setColor(0x6B52ED) 
                 .setThumbnail('attachment://S.H.I.E.L.D-Bot-deep-in-thought.png')
                 .setTimestamp();
 
