@@ -15,11 +15,11 @@ const commands = [
     { label: '/agent', customId: 'cmd_agent', emoji: '👤', description: 'Detailed agent info.' },
     { label: '/cve', customId: 'cmd_cve', emoji: '🛑', description: 'Search for a CVE by ID.' },
     { label: '/virustotal URL', customId: 'cmd_vt', emoji: '🦠', description: 'Scan using VirusTotal.' },
-    { label: '/toprules', emoji: '📊', description: 'Show the most frequently triggered Wazuh rules.' },
-    { label: '/vulnerabilities', emoji: '🔍', description: 'Show vulnerabilities detected on an agent.' },
-    { label: '/port', emoji: '🔌', description: 'Show open ports on a Wazuh agent.' },
-    { label: '/hunt', emoji: '🏹', description: 'Search alerts across all agents by keyword, IP address, or username.' },
-    { label: '/search', emoji: '🔎', description: 'Fetch all alerts triggered by a specific Wazuh rule ID.' },
+    { label: '/toprules', customId: 'cmd_toprules', emoji: '📊', description: 'Show the most frequently triggered Wazuh rules.' },
+    { label: '/hunt', customId: 'cmd_hunt', emoji: '🏹', description: 'Search alerts by keyword, IP, or username.' },
+    { label: '/port', customId: 'cmd_ports', emoji: '🔌', description: 'Show open ports on a Wazuh agent.' },
+    { label: '/search', customId: 'cmd_search', emoji: '🔎', description: 'Fetch all alerts triggered by a specific Wazuh rule ID.' },
+    { label: '/vulnerabilities', customId: 'cmd_vulns', emoji: '🛡️', description: 'Show vulnerabilities detected on an agent.' },
 
 
 
@@ -69,7 +69,7 @@ module.exports = {
 
         await interaction.reply({
             embeds: [helpEmbed],
-            components: buildButtonRows(commands.slice(0, 7)),
+            components: buildButtonRows(commands), // .slice(0, 12)button number in help cmd 
             flags: MessageFlags.Ephemeral,
         });
 

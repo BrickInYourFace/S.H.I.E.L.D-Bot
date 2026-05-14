@@ -118,6 +118,131 @@ module.exports = {
                 await interaction.showModal(modal);
                 return;
             }
+            // Toprules button → call directly with defaults
+            if (interaction.customId === 'cmd_toprules') {
+                const command = interaction.client.commands.get('toprules');
+                if (!command) return;
+                try {
+                    interaction.options = {
+                        getInteger: () => 5, // default limit
+                    };
+                    await interaction.deferReply({ ephemeral: true });
+                    interaction.deferReply = () => Promise.resolve();
+                    await command.execute(interaction);
+                } catch (error) {
+                    console.error('Button error for /toprules:', error);
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
+                    }
+                }
+                return;
+            }
+            // Hunt button → open modal
+            if (interaction.customId === 'cmd_hunt') {
+                const modal = new ModalBuilder()
+                    .setCustomId('modal_hunt')
+                    .setTitle('Threat Hunt');
+
+                const queryInput = new TextInputBuilder()
+                    .setCustomId('hunt_query_input')
+                    .setLabel('Search Query')
+                    .setPlaceholder('e.g. 192.168.1.100 or administrator or powershell')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(queryInput)
+                );
+
+                await interaction.showModal(modal);
+                return;
+            }
+            // Ports button → open modal
+            if (interaction.customId === 'cmd_ports') {
+                const modal = new ModalBuilder()
+                    .setCustomId('modal_ports')
+                    .setTitle('Open Ports Lookup');
+
+                const agentInput = new TextInputBuilder()
+                    .setCustomId('ports_agent_input')
+                    .setLabel('Agent Name')
+                    .setPlaceholder('e.g. ubuntu-server')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                const protocolInput = new TextInputBuilder()
+                    .setCustomId('ports_protocol_input')
+                    .setLabel('Protocol (tcp / udp / both)')
+                    .setPlaceholder('both')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(false);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(agentInput),
+                    new ActionRowBuilder().addComponents(protocolInput),
+                );
+
+                await interaction.showModal(modal);
+                return;
+            }
+            // Search button → open modal
+            if (interaction.customId === 'cmd_search') {
+                const modal = new ModalBuilder()
+                    .setCustomId('modal_search')
+                    .setTitle('Search by Rule ID');
+
+                const ruleInput = new TextInputBuilder()
+                    .setCustomId('search_rule_input')
+                    .setLabel('Rule ID')
+                    .setPlaceholder('e.g. 5710')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                const limitInput = new TextInputBuilder()
+                    .setCustomId('search_limit_input')
+                    .setLabel('Limit (1-10, default 5)')
+                    .setPlaceholder('5')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(false);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(ruleInput),
+                    new ActionRowBuilder().addComponents(limitInput),
+                );
+
+                await interaction.showModal(modal);
+                return;
+            }
+            // Vulnerabilities button → open modal
+            if (interaction.customId === 'cmd_vulns') {
+                const modal = new ModalBuilder()
+                    .setCustomId('modal_vulns')
+                    .setTitle('Vulnerability Scan');
+
+                const agentInput = new TextInputBuilder()
+                    .setCustomId('vulns_agent_input')
+                    .setLabel('Agent Name')
+                    .setPlaceholder('e.g. ubuntu-server')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                const severityInput = new TextInputBuilder()
+                    .setCustomId('vulns_severity_input')
+                    .setLabel('Severity (Critical / High / Medium / Low)')
+                    .setPlaceholder('leave empty for all')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(false);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(agentInput),
+                    new ActionRowBuilder().addComponents(severityInput),
+                );
+
+                await interaction.showModal(modal);
+                return;
+            }
             // All other buttons → run their matching command
             const commandMap = {
                 cmd_about: 'about',
@@ -125,10 +250,6 @@ module.exports = {
                 cmd_agents: 'agents',
                 cmd_status: 'status',
                 cmd_agent: 'agent',
-
-
-                //  cmd_toprules: 'toprules',
-                // cmd_vulns: 'vulns',
                 // cmd_vt excluded — handled above
                 // cmd_alerts excluded — handled above
                 // cmd_cve excluded — handled above via modal
@@ -208,43 +329,6 @@ module.exports = {
                     }
                 }
             }
-            /*  if (interaction.customId === 'modal_vt_url') {
-                  // Only one input needed: the URL to scan
-                  const urlTarget = interaction.fields.getTextInputValue('vt_url_input').trim();
-                  const command = interaction.client.commands.get('virustotal');
-  
-                  if (!command) return;
-  
-                  try {
-                      // Hardcode the options to mimic a "url" subcommand
-                      interaction.options = {
-                          getSubcommand: () => 'url',
-                          getString: (key) => {
-                              // Usually the parameter in the command is named 'url' or 'target'
-                              if (key === 'url' || key === 'target') return urlTarget;
-                              return null;
-                          },
-                          // Attachment not needed for URL scan
-                          getAttachment: () => null,
-                      };
-  
-                      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  
-                      // Prevent double-deferring in the actual command file
-                      interaction.deferReply = () => Promise.resolve();
-  
-                      await command.execute(interaction);
-                  } catch (error) {
-                      console.error('Modal URL Scan Error:', error);
-                      const errorMsg = { content: '❌ Failed to initiate URL scan.', flags: MessageFlags.Ephemeral };
-  
-                      if (interaction.replied || interaction.deferred) {
-                          await interaction.followUp(errorMsg);
-                      } else {
-                          await interaction.reply(errorMsg);
-                      }
-                  }
-              }*/
 
             if (interaction.customId === 'modal_vt') {
                 const scanType = interaction.fields.getTextInputValue('vt_type_input').toLowerCase().trim();
@@ -263,6 +347,106 @@ module.exports = {
                     await command.execute(interaction);
                 } catch (error) {
                     console.error('Modal VT error:', error);
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
+                    }
+                }
+            }
+            if (interaction.customId === 'modal_hunt') {
+                const query = interaction.fields.getTextInputValue('hunt_query_input').trim();
+                const command = interaction.client.commands.get('hunt');
+                if (!command) return;
+
+                try {
+                    interaction.options = {
+                        getString: (key) => key === 'query' ? query : null,
+                        getInteger: () => 5, // default limit
+                    };
+                    await interaction.deferReply({ ephemeral: true });
+                    interaction.deferReply = () => Promise.resolve();
+                    await command.execute(interaction);
+                } catch (error) {
+                    console.error('Modal hunt error:', error);
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
+                    }
+                }
+            }
+            if (interaction.customId === 'modal_ports') {
+                const agentName = interaction.fields.getTextInputValue('ports_agent_input').trim();
+                const protocol = interaction.fields.getTextInputValue('ports_protocol_input').trim().toLowerCase() || 'both';
+                const command = interaction.client.commands.get('ports');
+                if (!command) return;
+
+                try {
+                    interaction.options = {
+                        getString: (key) => {
+                            if (key === 'agent') return agentName;
+                            if (key === 'protocol') return protocol;
+                            return null;
+                        },
+                    };
+                    await interaction.deferReply({ ephemeral: true });
+                    interaction.deferReply = () => Promise.resolve();
+                    await command.execute(interaction);
+                } catch (error) {
+                    console.error('Modal ports error:', error);
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
+                    }
+                }
+            }
+            if (interaction.customId === 'modal_search') {
+                const ruleId = interaction.fields.getTextInputValue('search_rule_input').trim();
+                const limitRaw = interaction.fields.getTextInputValue('search_limit_input').trim();
+                const limit = parseInt(limitRaw) || 5;
+                const command = interaction.client.commands.get('search');
+                if (!command) return;
+
+                try {
+                    interaction.options = {
+                        getString: (key) => key === 'rule_id' ? ruleId : null,
+                        getInteger: (key) => key === 'limit' ? limit : null,
+                    };
+                    await interaction.deferReply({ ephemeral: true });
+                    interaction.deferReply = () => Promise.resolve();
+                    await command.execute(interaction);
+                } catch (error) {
+                    console.error('Modal search error:', error);
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
+                    }
+                }
+            }
+            if (interaction.customId === 'modal_vulns') {
+                const agentName = interaction.fields.getTextInputValue('vulns_agent_input').trim();
+                const severityRaw = interaction.fields.getTextInputValue('vulns_severity_input').trim();
+                const validSevs = ['Critical', 'High', 'Medium', 'Low'];
+                const severity = validSevs.find(s => s.toLowerCase() === severityRaw.toLowerCase()) ?? null;
+                const command = interaction.client.commands.get('vulnerabilities');
+                if (!command) return;
+
+                try {
+                    interaction.options = {
+                        getString: (key) => {
+                            if (key === 'agent') return agentName;
+                            if (key === 'severity') return severity;
+                            return null;
+                        },
+                    };
+                    await interaction.deferReply({ ephemeral: true });
+                    interaction.deferReply = () => Promise.resolve();
+                    await command.execute(interaction);
+                } catch (error) {
+                    console.error('Modal vulns error:', error);
                     if (interaction.replied || interaction.deferred) {
                         await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
                     } else {
