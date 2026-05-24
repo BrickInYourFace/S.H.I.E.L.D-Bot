@@ -14,31 +14,35 @@ function buildResult(attributes, analysisId, type) {
         .filter(([_, v]) => v.category === 'malicious' || v.category === 'suspicious')
         .map(([engine, v]) => ({ engine, result: v.result }));
 
+    // ✅ For files, extract sha256 from meta if available, fallback to analysisId
+    const fileHash = attributes.sha256 ?? analysisId;
+
     const permalink = type === 'file'
-        ? `https://www.virustotal.com/gui/file/${analysisId}`
+        ? `https://www.virustotal.com/gui/file/${fileHash}`
         : `https://www.virustotal.com/gui/url/${analysisId}`;
 
     return { stats, detections, permalink };
 }
 
-// Wait for analysis to finish
-async function waitForAnalysis(analysisId, maxWait = 30000) {
+// ✅ Increased default timeout, poll every 5s instead of 3s
+async function waitForAnalysis(analysisId, maxWait = 300000) {
     const start = Date.now();
     while (Date.now() - start < maxWait) {
         const res = await axios.get(`${VT_BASE}/analyses/${analysisId}`, { headers });
-        const status = res.data.data.attributes.status;
-        if (status === 'completed') return res.data.data.attributes;
-        await new Promise(r => setTimeout(r, 3000));
+        const data = res.data.data;
+        const status = data.attributes.status;
+
+        if (status === 'completed') return data.attributes;
+
+        await new Promise(r => setTimeout(r, 5000)); // ✅ poll every 5s
     }
-    throw new Error('Analysis timed out. Try again in a moment.');
+    throw new Error('Analysis timed out after 5 minutes. Try again later.');
 }
 
 // Scan URL or IP
 async function scanUrl(target) {
-    // VirusTotal requires base64url encoded URL for lookups
     const urlId = Buffer.from(target).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     
-    // First check if already analyzed
     try {
         const existing = await axios.get(`${VT_BASE}/urls/${urlId}`, { headers });
         const attrs = existing.data.data.attributes;
@@ -53,7 +57,6 @@ async function scanUrl(target) {
             permalink: `https://www.virustotal.com/gui/url/${urlId}`
         };
     } catch {
-        // Not found, submit for fresh scan
         const submitRes = await axios.post(
             `${VT_BASE}/urls`,
             new URLSearchParams({ url: target }),
@@ -65,7 +68,7 @@ async function scanUrl(target) {
     }
 }
 
-// Scan file hash (MD5, SHA1, SHA256)
+// Scan file hash
 async function scanHash(hash) {
     const res = await axios.get(`${VT_BASE}/files/${hash}`, { headers });
     const attrs = res.data.data.attributes;
@@ -85,11 +88,9 @@ async function scanHash(hash) {
 
 // Scan file attachment
 async function scanFile(fileUrl, fileName) {
-    // Download file from Discord CDN
     const fileRes = await axios.get(fileUrl, { responseType: 'arraybuffer' });
     const fileBuffer = Buffer.from(fileRes.data);
 
-    // Upload to VirusTotal
     const form = new FormData();
     form.append('file', fileBuffer, { filename: fileName });
 
@@ -100,7 +101,7 @@ async function scanFile(fileUrl, fileName) {
     );
 
     const analysisId = submitRes.data.data.id;
-    const attributes = await waitForAnalysis(analysisId, 60000); // files take longer
+    const attributes = await waitForAnalysis(analysisId, 300000); // ✅ 5 min timeout
     return buildResult(attributes, analysisId, 'file');
 }
 
