@@ -1,4 +1,40 @@
 const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { isWazuhDown } = require('../utilities/wazuh');
+
+// ── Wazuh-aware error reply helper ─────────────────────────────────────────────
+// Detects whether the error is a Wazuh connectivity issue and replies accordingly.
+async function handleError(interaction, error, context = '') {
+    if (context) console.error(`Error in ${context}:`, error);
+    else console.error(error);
+
+    const embed = isWazuhDown(error)
+        ? {
+            color: 0xff4500,
+            title: '🔴 Wazuh Server Unavailable',
+            description: 'The Wazuh server is currently **offline or unreachable**.\nPlease try again later or contact your administrator.',
+            footer: { text: 'S.H.I.E.L.D BOT • Wazuh Integration' },
+            timestamp: new Date().toISOString()
+        }
+        : {
+            color: 0xff0000,
+            title: '❌ Something went wrong',
+            description: `\`${error.message}\``,
+            footer: { text: 'S.H.I.E.L.D BOT' },
+            timestamp: new Date().toISOString()
+        };
+
+    const payload = { embeds: [embed], ephemeral: true };
+
+    try {
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp(payload);
+        } else {
+            await interaction.reply(payload);
+        }
+    } catch (replyErr) {
+        console.error('Failed to send error reply:', replyErr);
+    }
+}
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -22,8 +58,13 @@ module.exports = {
                     console.warn(`⚠️ Autocomplete timed out for ${interaction.commandName}`);
                 } else if (err.code === 10062) {
                     console.warn(`⚠️ Autocomplete interaction expired for ${interaction.commandName}`);
+                } else if (isWazuhDown(err)) {
+                    console.warn(`⚠️ Wazuh server down during autocomplete for ${interaction.commandName}`);
+                    // Autocomplete can't show embeds — return empty list silently
+                    try { await interaction.respond([]); } catch (_) {}
                 } else {
                     console.error('Autocomplete error:', err);
+                    try { await interaction.respond([]); } catch (_) {}
                 }
             }
             return;
@@ -31,6 +72,7 @@ module.exports = {
 
         // ── Button handler ──────────────────────────────────────────────
         if (interaction.isButton()) {
+
             // CVE button → open modal
             if (interaction.customId === 'cmd_cve') {
                 const modal = new ModalBuilder()
@@ -44,29 +86,20 @@ module.exports = {
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true);
 
-                modal.addComponents(
-                    new ActionRowBuilder().addComponents(cveInput)
-                );
-
+                modal.addComponents(new ActionRowBuilder().addComponents(cveInput));
                 await interaction.showModal(modal);
                 return;
             }
 
-            // Alerts button → call fetchAlerts directly (has no options)
+            // Alerts button → call fetchAlerts directly
             if (interaction.customId === 'cmd_alerts') {
                 const command = interaction.client.commands.get('alerts');
                 if (!command) return;
                 try {
                     await command.fetchAlerts(interaction);
                 } catch (error) {
-                    console.error('Button error for /alerts:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, '/alerts button');
                 }
-
                 return;
             }
 
@@ -83,13 +116,11 @@ module.exports = {
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true);
 
-                modal.addComponents(
-                    new ActionRowBuilder().addComponents(agentInput)
-                );
-
+                modal.addComponents(new ActionRowBuilder().addComponents(agentInput));
                 await interaction.showModal(modal);
                 return;
             }
+
             // VT button → open modal
             if (interaction.customId === 'cmd_vt') {
                 const modal = new ModalBuilder()
@@ -106,7 +137,7 @@ module.exports = {
                 const targetInput = new TextInputBuilder()
                     .setCustomId('vt_target_input')
                     .setLabel('Target (URL)')
-                    .setPlaceholder('e.g. https://example.com ')
+                    .setPlaceholder('e.g. https://example.com')
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true);
 
@@ -114,31 +145,25 @@ module.exports = {
                     new ActionRowBuilder().addComponents(typeInput),
                     new ActionRowBuilder().addComponents(targetInput),
                 );
-
                 await interaction.showModal(modal);
                 return;
             }
+
             // Toprules button → call directly with defaults
             if (interaction.customId === 'cmd_toprules') {
                 const command = interaction.client.commands.get('toprules');
                 if (!command) return;
                 try {
-                    interaction.options = {
-                        getInteger: () => 5, // default limit
-                    };
+                    interaction.options = { getInteger: () => 5 };
                     await interaction.deferReply({ ephemeral: true });
                     interaction.deferReply = () => Promise.resolve();
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Button error for /toprules:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, '/toprules button');
                 }
                 return;
             }
+
             // Hunt button → open modal
             if (interaction.customId === 'cmd_hunt') {
                 const modal = new ModalBuilder()
@@ -152,13 +177,11 @@ module.exports = {
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true);
 
-                modal.addComponents(
-                    new ActionRowBuilder().addComponents(queryInput)
-                );
-
+                modal.addComponents(new ActionRowBuilder().addComponents(queryInput));
                 await interaction.showModal(modal);
                 return;
             }
+
             // Ports button → open modal
             if (interaction.customId === 'cmd_ports') {
                 const modal = new ModalBuilder()
@@ -183,10 +206,10 @@ module.exports = {
                     new ActionRowBuilder().addComponents(agentInput),
                     new ActionRowBuilder().addComponents(protocolInput),
                 );
-
                 await interaction.showModal(modal);
                 return;
             }
+
             // Search button → open modal
             if (interaction.customId === 'cmd_search') {
                 const modal = new ModalBuilder()
@@ -211,10 +234,10 @@ module.exports = {
                     new ActionRowBuilder().addComponents(ruleInput),
                     new ActionRowBuilder().addComponents(limitInput),
                 );
-
                 await interaction.showModal(modal);
                 return;
             }
+
             // Vulnerabilities button → open modal
             if (interaction.customId === 'cmd_vulns') {
                 const modal = new ModalBuilder()
@@ -239,10 +262,10 @@ module.exports = {
                     new ActionRowBuilder().addComponents(agentInput),
                     new ActionRowBuilder().addComponents(severityInput),
                 );
-
                 await interaction.showModal(modal);
                 return;
             }
+
             // All other buttons → run their matching command
             const commandMap = {
                 cmd_about: 'about',
@@ -250,9 +273,6 @@ module.exports = {
                 cmd_agents: 'agents',
                 cmd_status: 'status',
                 cmd_agent: 'agent',
-                // cmd_vt excluded — handled above
-                // cmd_alerts excluded — handled above
-                // cmd_cve excluded — handled above via modal
             };
 
             const commandName = commandMap[interaction.customId];
@@ -264,45 +284,34 @@ module.exports = {
             try {
                 await command.execute(interaction);
             } catch (error) {
-                console.error(`Button error for /${commandName}:`, error);
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                } else {
-                    await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                }
+                await handleError(interaction, error, `/${commandName} button`);
             }
             return;
         }
 
         // ── Modal submit handler ────────────────────────────────────────
         if (interaction.isModalSubmit()) {
+
             if (interaction.customId === 'complaints') {
                 const complaints = interaction.client.commands.get('complaints');
                 if (complaints?.modalHandler) {
                     await complaints.modalHandler(interaction);
                 }
             }
+
             if (interaction.customId === 'modal_cve') {
                 const cveId = interaction.fields.getTextInputValue('cve_id_input');
                 const command = interaction.client.commands.get('cve');
                 if (!command) return;
-
                 try {
                     interaction.options = {
                         getString: (key) => key === 'id' ? cveId : null,
                     };
-                    // Defer first so cve.js's interaction.reply() becomes a no-op effectively
                     await interaction.deferReply({ ephemeral: true });
-                    // Now override reply to editReply since we already deferred
                     interaction.reply = (opts) => interaction.editReply(opts);
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Modal CVE error:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, 'modal_cve');
                 }
             }
 
@@ -310,23 +319,15 @@ module.exports = {
                 const agentName = interaction.fields.getTextInputValue('agent_name_input');
                 const command = interaction.client.commands.get('agent');
                 if (!command) return;
-
                 try {
                     interaction.options = {
                         getString: (key) => key === 'name' ? agentName : null,
                     };
-                    // agent.js calls deferReply() then editReply()
-                    // so we defer first and override deferReply to avoid double-defer
                     await interaction.deferReply({ ephemeral: true });
-                    interaction.deferReply = () => Promise.resolve(); // no-op so agent.js's deferReply is skipped
+                    interaction.deferReply = () => Promise.resolve();
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Modal agent error:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, 'modal_agent');
                 }
             }
 
@@ -335,7 +336,6 @@ module.exports = {
                 const target = interaction.fields.getTextInputValue('vt_target_input').trim();
                 const command = interaction.client.commands.get('virustotal');
                 if (!command) return;
-
                 try {
                     interaction.options = {
                         getSubcommand: () => scanType === 'hash' ? 'hash' : scanType === 'file' ? 'file' : 'url',
@@ -346,42 +346,32 @@ module.exports = {
                     interaction.deferReply = () => Promise.resolve();
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Modal VT error:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, 'modal_vt');
                 }
             }
+
             if (interaction.customId === 'modal_hunt') {
                 const query = interaction.fields.getTextInputValue('hunt_query_input').trim();
                 const command = interaction.client.commands.get('hunt');
                 if (!command) return;
-
                 try {
                     interaction.options = {
                         getString: (key) => key === 'query' ? query : null,
-                        getInteger: () => 5, // default limit
+                        getInteger: () => 5,
                     };
                     await interaction.deferReply({ ephemeral: true });
                     interaction.deferReply = () => Promise.resolve();
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Modal hunt error:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, 'modal_hunt');
                 }
             }
+
             if (interaction.customId === 'modal_ports') {
                 const agentName = interaction.fields.getTextInputValue('ports_agent_input').trim();
                 const protocol = interaction.fields.getTextInputValue('ports_protocol_input').trim().toLowerCase() || 'both';
                 const command = interaction.client.commands.get('ports');
                 if (!command) return;
-
                 try {
                     interaction.options = {
                         getString: (key) => {
@@ -394,21 +384,16 @@ module.exports = {
                     interaction.deferReply = () => Promise.resolve();
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Modal ports error:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, 'modal_ports');
                 }
             }
+
             if (interaction.customId === 'modal_search') {
                 const ruleId = interaction.fields.getTextInputValue('search_rule_input').trim();
                 const limitRaw = interaction.fields.getTextInputValue('search_limit_input').trim();
                 const limit = parseInt(limitRaw) || 5;
                 const command = interaction.client.commands.get('search');
                 if (!command) return;
-
                 try {
                     interaction.options = {
                         getString: (key) => key === 'rule_id' ? ruleId : null,
@@ -418,14 +403,10 @@ module.exports = {
                     interaction.deferReply = () => Promise.resolve();
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Modal search error:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, 'modal_search');
                 }
             }
+
             if (interaction.customId === 'modal_vulns') {
                 const agentName = interaction.fields.getTextInputValue('vulns_agent_input').trim();
                 const severityRaw = interaction.fields.getTextInputValue('vulns_severity_input').trim();
@@ -433,7 +414,6 @@ module.exports = {
                 const severity = validSevs.find(s => s.toLowerCase() === severityRaw.toLowerCase()) ?? null;
                 const command = interaction.client.commands.get('vulnerabilities');
                 if (!command) return;
-
                 try {
                     interaction.options = {
                         getString: (key) => {
@@ -446,14 +426,10 @@ module.exports = {
                     interaction.deferReply = () => Promise.resolve();
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error('Modal vulns error:', error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({ content: '❌ Something went wrong.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: '❌ Something went wrong.', ephemeral: true });
-                    }
+                    await handleError(interaction, error, 'modal_vulns');
                 }
             }
+
             return;
         }
 
@@ -490,13 +466,7 @@ module.exports = {
         try {
             await command.execute(interaction);
         } catch (error) {
-            console.error(error);
-            const msg = { content: '❌ There was an error executing this command.', ephemeral: true };
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(msg);
-            } else {
-                await interaction.reply(msg);
-            }
+            await handleError(interaction, error, `/${interaction.commandName} slash command`);
         }
     }
 };
