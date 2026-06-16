@@ -4,8 +4,8 @@ module.exports = {
 	cooldown: 10,
 	data: new SlashCommandBuilder()
 		.setName('ping')
-		.setDescription('harharharharhar'),
+		.setDescription('Check Bot Alive Status'),
 	async execute(interaction) {
-		await interaction.reply('pong nigga');
+		await interaction.reply('pong');
 	}
 };

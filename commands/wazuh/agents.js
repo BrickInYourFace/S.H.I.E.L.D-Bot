@@ -10,35 +10,25 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply();
 
-        try {
-            const agents = await getAgents();
+        const agents = await getAgents();
 
-            let description = '';
+        let description = '';
+        agents.forEach(agent => {
+            const emoji = agent.status === 'active' ? '✅' : '❌';
+            description += `${emoji} **${agent.name}** — ${agent.status}\n`;
+        });
 
-            agents.forEach(agent => {
-                const emoji = agent.status === 'active' ? '✅' : '❌';
-                description += `${emoji} **${agent.name}** — ${agent.status}\n`;
-            });
-            const file = new AttachmentBuilder(
-                path.join(__dirname, '../../S.H.I.E.L.D-Bot-deep-in-thought.png')
-            );
+        const file = new AttachmentBuilder(
+            path.join(__dirname, '../../S.H.I.E.L.D-Bot-deep-in-thought.png')
+        );
 
-            const embed = new EmbedBuilder()
-                .setTitle('Wazuh Agents')
-                .setDescription(description)
-                .setColor(0x6B52ED) 
-                .setThumbnail('attachment://S.H.I.E.L.D-Bot-deep-in-thought.png')
-                .setTimestamp();
+        const embed = new EmbedBuilder()
+            .setTitle('Wazuh Agents')
+            .setDescription(description)
+            .setColor(0x6B52ED)
+            .setThumbnail('attachment://S.H.I.E.L.D-Bot-deep-in-thought.png')
+            .setTimestamp();
 
-            await interaction.editReply({
-                embeds: [embed],
-                files: [file]
-            });
-
-        } catch (err) {
-            await interaction.editReply({
-                content: `❌ Error fetching agents: ${err.message}`
-            });
-        }
+        await interaction.editReply({ embeds: [embed], files: [file] });
     }
 };

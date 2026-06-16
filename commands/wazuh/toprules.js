@@ -12,29 +12,29 @@ module.exports = {
                 .setMaxValue(10)
                 .setRequired(false)
         ),
+
     async execute(interaction) {
         await interaction.deferReply();
-        try {
-            const limit = interaction.options.getInteger('limit') ?? 5;
-            const rules = await getTopRules(limit);
 
-            if (!rules.length) {
-                return await interaction.editReply('✅ No rules found.');
-            }
+        const limit = interaction.options.getInteger('limit') ?? 5;
+        const rules = await getTopRules(limit);
 
-            let msg = `**Top ${rules.length} Triggered Rules:**\n`;
-            rules.forEach((rule, i) => {
-                msg += `\n**${i + 1}.** \`${rule.description}\`\n`;
-                msg += `   🔢 Rule ID: ${rule.id} | 🔴 Level: ${rule.level} | 📊 Count: ${rule.count}\n`;
-            });
-            const toprulesEmbed = new EmbedBuilder()
-                .setAuthor({ name: 'Developed By The S.H.I.E.L.D Team' })
-                .setDescription(msg)
-                .setColor('#52afed')
-                .setTimestamp()
-            await interaction.editReply({ embeds: [toprulesEmbed] });
-        } catch (err) {
-            await interaction.editReply('❌ Error fetching top rules: ' + err.message);
+        if (!rules.length) {
+            return await interaction.editReply('✅ No rules found.');
         }
+
+        let msg = `**Top ${rules.length} Triggered Rules:**\n`;
+        rules.forEach((rule, i) => {
+            msg += `\n**${i + 1}.** \`${rule.description}\`\n`;
+            msg += `   🔢 Rule ID: ${rule.id} | 🔴 Level: ${rule.level} | 📊 Count: ${rule.count}\n`;
+        });
+
+        const toprulesEmbed = new EmbedBuilder()
+            .setAuthor({ name: 'Developed By The S.H.I.E.L.D Team' })
+            .setDescription(msg)
+            .setColor('#52afed')
+            .setTimestamp();
+
+        await interaction.editReply({ embeds: [toprulesEmbed] });
     }
 };

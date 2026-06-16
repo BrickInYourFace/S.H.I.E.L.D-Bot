@@ -29,63 +29,62 @@ module.exports = {
             .setAutocomplete(true)),
 
     async autocomplete(interaction) {
-        const focused = interaction.options.getFocused().toLowerCase();
-        const agents = await getAgents();
-        const choices = agents
-            .filter(a => a.id !== '000' && a.name.toLowerCase().includes(focused))
-            .map(a => ({ name: `${a.name} (${a.status})`, value: a.name }))
-            .slice(0, 25);
-        await interaction.respond(choices);
+        try {
+            const focused = interaction.options.getFocused().toLowerCase();
+            const agents = await getAgents();
+            const choices = agents
+                .filter(a => a.id !== '000' && a.name.toLowerCase().includes(focused))
+                .map(a => ({ name: `${a.name} (${a.status})`, value: a.name }))
+                .slice(0, 25);
+            await interaction.respond(choices);
+        } catch {
+            await interaction.respond([]);
+        }
+    },
+
+    async fetchAlerts(interaction) {
+        await interaction.deferReply();
+
+        const limit     = interaction.options?.getInteger?.('limit') ?? 5;
+        const level     = interaction.options?.getInteger?.('level') ?? 1;
+        const agentName = interaction.options?.getString?.('agent') ?? null;
+        const alerts    = await getAlerts(limit, level, agentName);
+
+        if (!alerts || alerts.length === 0) {
+            const agentNote = agentName ? ` for agent **${agentName}**` : '';
+            return await interaction.editReply({
+                content: `✅ No alerts found at level **${level}** or above${agentNote}.`
+            });
+        }
+
+        const file = new AttachmentBuilder(
+            path.join(__dirname, '../../S.H.I.E.L.D-Bot-deep-in-thought.png')
+        );
+
+        const embeds = alerts.map((alert, i) => {
+            const lvl = alert.rule?.level ?? 0;
+            const sev = SEVERITY.find(s => lvl >= s.min);
+            return new EmbedBuilder()
+                .setAuthor({ name: 'S.H.I.E.L.D Bot — Wazuh Alert' })
+                .setTitle(`⚠️ ${alert.rule?.description ?? 'Unknown Rule'}`)
+                .setColor(sev.color)
+                .addFields(
+                    { name: '🛡️ Severity', value: `${sev.label} (Level ${lvl})`,                                        inline: true  },
+                    { name: '🖥️ Agent',    value: `${alert.agent?.name ?? 'N/A'} (ID: ${alert.agent?.id ?? 'N/A'})`,    inline: true  },
+                    { name: '📋 Rule ID',  value: `\`${alert.rule?.id ?? 'N/A'}\``,                                     inline: true  },
+                    { name: '📁 Location', value: `\`${alert.location ?? 'N/A'}\``,                                     inline: false },
+                    { name: '🏷️ Groups',   value: alert.rule?.groups?.join(', ') ?? 'N/A',                              inline: false },
+                    { name: '🕒 Time',     value: alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'N/A', inline: false },
+                )
+                .setThumbnail('attachment://S.H.I.E.L.D-Bot-deep-in-thought.png')
+                .setFooter({ text: `Alert ${i + 1} of ${alerts.length}` })
+                .setTimestamp();
+        });
+
+        await interaction.editReply({ embeds, files: [file] });
     },
 
     async execute(interaction) {
-        await interaction.deferReply();
-
-        try {
-            const limit     = interaction.options.getInteger('limit') ?? 5;
-            const level     = interaction.options.getInteger('level') ?? 1;
-            const agentName = interaction.options.getString('agent') ?? null;
-            const alerts    = await getAlerts(limit, level, agentName);
-
-            if (!alerts || alerts.length === 0) {
-                const agentNote = agentName ? ` for agent **${agentName}**` : '';
-                return await interaction.editReply({
-                    content: `✅ No alerts found at level **${level}** or above${agentNote}.`
-                });
-            }
-
-            const file = new AttachmentBuilder(
-                path.join(__dirname, '../../S.H.I.E.L.D-Bot-deep-in-thought.png')
-            );
-
-            const embeds = alerts.map((alert, i) => {
-                const lvl = alert.rule?.level ?? 0;
-                const sev = SEVERITY.find(s => lvl >= s.min);
-
-                return new EmbedBuilder()
-                    .setAuthor({ name: 'S.H.I.E.L.D Bot — Wazuh Alert' })
-                    .setTitle(`⚠️ ${alert.rule?.description ?? 'Unknown Rule'}`)
-                    .setColor(sev.color)
-                    .addFields(
-                        { name: '🛡️ Severity', value: `${sev.label} (Level ${lvl})`,                                        inline: true  },
-                        { name: '🖥️ Agent',    value: `${alert.agent?.name ?? 'N/A'} (ID: ${alert.agent?.id ?? 'N/A'})`,    inline: true  },
-                        { name: '📋 Rule ID',  value: `\`${alert.rule?.id ?? 'N/A'}\``,                                     inline: true  },
-                        { name: '📁 Location', value: `\`${alert.location ?? 'N/A'}\``,                                     inline: false },
-                        { name: '🏷️ Groups',   value: alert.rule?.groups?.join(', ') ?? 'N/A',                              inline: false },
-                        { name: '🕒 Time',     value: alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'N/A', inline: false },
-                    )
-                    .setThumbnail('attachment://S.H.I.E.L.D-Bot-deep-in-thought.png')
-                    .setFooter({ text: `Alert ${i + 1} of ${alerts.length}` })
-                    .setTimestamp();
-            });
-
-            // Discord allows max 10 embeds per message
-            await interaction.editReply({ embeds, files: [file] });
-
-        } catch (err) {
-            await interaction.editReply({
-                content: `❌ Error fetching alerts: ${err.message}`
-            });
-        }
+        await this.fetchAlerts(interaction);
     }
 };
