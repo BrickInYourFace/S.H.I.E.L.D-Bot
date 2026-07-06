@@ -3,7 +3,7 @@ data/lastSummaryTimestamp.json
 data/lastAlertTimestamp.json
 
 # Environment
-#.env
+.env
 
 # Dependencies
 #node_modules/
